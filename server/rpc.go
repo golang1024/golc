@@ -11,8 +11,15 @@ import (
 
 	"net/rpc"
 	"net/http"
+	"sync"
+	"fmt"
+	"time"
 )
 
+var (
+	lock = &sync.Mutex{}
+	socketListener net.Listener
+)
 type GoLC struct {
 
 }
@@ -47,10 +54,16 @@ func (lc *GoLC) Del(args []string, reply *[]byte) error {
 }
 
 func Run(ini string) error {
-	c, _ := env.LoadConfigFile(ini)
+	c, err := env.LoadConfigFile(ini)
 	var network, addr string
-	network , _ = c.GetValue(core.SERVER_CONF_SECTION, "network")
-	addr, _ = c.GetValue(core.SERVER_CONF_SECTION, "address")
+	if err == nil {
+		network , _ = c.GetValue(core.SERVER_CONF_SECTION, "network")
+		addr, _ = c.GetValue(core.SERVER_CONF_SECTION, "address")
+		cacheIniFile, _ := c.GetValue(core.SERVER_CONF_SECTION, "cache_config")
+		if len(cacheIniFile) > 0 {
+			core.InitCache(cacheIniFile)
+		}
+	}
 
 	if len(network) <= 0 || (network != "tcp" && network != "unix") {
 		network = core.SERVER_NETWORK
@@ -59,14 +72,27 @@ func Run(ini string) error {
 	if len(addr) <= 0 {
 		network = core.SERVER_ADDRESS
 	}
-
+	lock.Lock()
+	defer lock.Unlock()
 	l, e := net.Listen(network, addr)
 	if e != nil {
 		return e
 	}
+	fmt.Printf("[golc]server: Listen on %s, %s\n", network, addr)
 	lc := new(GoLC)
 	rpc.Register(lc)
 	rpc.HandleHTTP()
-	http.Serve(l, nil)
+
+	go http.Serve(l, nil)
+	fmt.Printf("[golc]server: run on %s, %s\n", network, addr)
+	time.Sleep(time.Millisecond * 10)
+	socketListener = l
 	return nil
+}
+
+func Close() error {
+	lock.Lock()
+	defer lock.Unlock()
+	fmt.Sprintf("[golc]server: try to close")
+	return socketListener.Close()
 }

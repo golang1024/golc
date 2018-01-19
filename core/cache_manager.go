@@ -7,6 +7,7 @@ import (
 	"sync"
 	"errors"
 	"time"
+	"fmt"
 )
 
 var (
@@ -23,11 +24,15 @@ func InitCache(ini string) error {
 	if cahchMap != nil {
 		return errors.New("has init")
 	}
-	c, _ := env.LoadConfigFile(ini)
+	c, err := env.LoadConfigFile(ini)
 
-	//if err == nil {
-	//	return err
-	//}
+	if err != nil {
+		c, err = env.LoadConfigFile("test.ini")
+		if err != nil {
+			return err
+		}
+	}
+
 	dbs := c.MustValueArray("db", "dbs", ",")
 	if len(dbs) == 0 {
 		dbs = []string{DEFALUT_DBNAME}
@@ -37,12 +42,13 @@ func InitCache(ini string) error {
 	defer lock.Unlock()
 	cahchMap = make(map[string]*theCache.BigCache, len(dbs))
 	for _, db := range dbs {
-		dc := thecache.DefaultConfig(DEFALUT_CACHE_CONF_LIFEWINDOW * time.Second)
+		dc := theCache.DefaultConfig(DEFALUT_CACHE_CONF_LIFEWINDOW * time.Second)
 		newCache, err := theCache.NewBigCache(dc)
 		if err != nil {
 			return err
 		}
 		cahchMap[db] = newCache
+		fmt.Printf("[golc]Init db:%s\n", db)
 	}
 	return nil
 }
