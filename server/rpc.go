@@ -34,6 +34,26 @@ func (lc *GoLC) Get(args []string, reply *[]byte) (err error) {
 	return err
 }
 
+func (lc *GoLC) MGet(args []string, reply *[]*core.MGetResponse) (err error) {
+	if len(args) < 2 {
+		return errors.New("error args lens")
+	}
+
+	for _, key := range args[1:] {
+		tmpReplay, err := core.Get(args[0], key)
+		if err == nil {
+
+		}
+		res := &core.MGetResponse{Key:key, Result: tmpReplay}
+
+		if err != nil {
+			res.ErrMsg = err.Error()
+		}
+		*reply = append(*reply, res)
+	}
+	return nil
+}
+
 func (lc *GoLC) Set(args []string, reply *[]byte) error {
 	if len(args) < 3 {
 		return errors.New("error args lens")

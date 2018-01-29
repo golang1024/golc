@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	"errors"
 )
-
 
 
 type GoLCClient struct {
@@ -38,22 +38,36 @@ func NewsClient(ini string) (*GoLCClient){
 
 
 
-func (c *GoLCClient)Get(dbName, key string) (reply []byte, err error) {
-	err = Call(c.NetWork, c.Server, core.RPC_ACTION_GET, []string{dbName, key}, reply, core.CLIENT_TIME_OUT)
-	return
+func (c *GoLCClient)Get(dbName, key string) ([]byte, error) {
+	reply := []byte{}
+	err := Call(c.NetWork, c.Server, core.RPC_ACTION_GET, []string{dbName, key}, &reply, core.CLIENT_TIME_OUT)
+	return reply, err
 }
 
 func (c *GoLCClient)Set(dbName, key string, val []byte) (error) {
 	reply := []byte{}
-	return Call(c.NetWork, c.Server, core.RPC_ACTION_SET, []string{dbName, key, string(val)}, reply, core.CLIENT_TIME_OUT)
+	return Call(c.NetWork, c.Server, core.RPC_ACTION_SET, []string{dbName, key, string(val)}, &reply, core.CLIENT_TIME_OUT)
 }
 
 func (c *GoLCClient)Del(dbName, key string) (error) {
-	return Call(c.NetWork, c.Server, core.RPC_ACTION_DEL, []string{dbName, key}, nil, core.CLIENT_TIME_OUT)
+	reply := []byte{}
+	return Call(c.NetWork, c.Server, core.RPC_ACTION_DEL, []string{dbName, key}, &reply, core.CLIENT_TIME_OUT)
 }
 
 
-func Call(network, srv, rpcname string, args []string, reply []byte, timeOutMS int) error {
+func (c *GoLCClient)MGet(dbName string, keys []string) ([]*core.MGetResponse, error) {
+	if len(keys) == 0 {
+		return nil, errors.New("key is empty")
+	}
+	reply := make([]*core.MGetResponse, len(keys))
+	args := []string{dbName}
+	args = append(args, keys...)
+	err := Call(c.NetWork, c.Server, core.RPC_ACTION_MGET, args, &reply, core.CLIENT_TIME_OUT)
+	return reply, err
+}
+
+
+func Call(network, srv, rpcname string, args []string, reply interface{}, timeOutMS int) error {
 
 	c, errx := rpc.DialHTTP(network, srv)
 	if errx != nil {
@@ -67,7 +81,7 @@ func Call(network, srv, rpcname string, args []string, reply []byte, timeOutMS i
 		go func() {
 			defer close(ch)
 			ch <- c.Call(rpcname, args, reply)
-			fmt.Println("rep:",reply);
+			//fmt.Println("rep:",reply)
 		}()
 		select{
 		case <- time.After(time.Millisecond * time.Duration(timeOutMS)):

@@ -15,6 +15,12 @@ var (
 	cahchMap map[string]*theCache.BigCache
 )
 
+type MGetResponse struct {
+	Key		string
+	Result	[]byte
+	ErrMsg	string
+}
+
 func init() {
 	cahchMap = nil
 }

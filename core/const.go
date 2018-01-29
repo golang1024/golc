@@ -2,6 +2,7 @@ package core
 
 const(
 	RPC_ACTION_GET		= "GoLC.Get"
+	RPC_ACTION_MGET		= "GoLC.MGet"
 	RPC_ACTION_SET 		= "GoLC.Set"
 	RPC_ACTION_DEL		= "GoLC.Del"
 	RPC_ACTION_STATUS	= "GOLC.STATUS"
